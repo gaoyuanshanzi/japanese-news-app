@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { JSDOM } from 'jsdom';
+import { parseHTML } from 'linkedom';
 import { Readability } from '@mozilla/readability';
 import { translate } from '@vitalets/google-translate-api';
 
@@ -15,8 +15,8 @@ export async function POST(req: Request) {
     const html = await response.text();
 
     // 2. Extract article content using Readability
-    const doc = new JSDOM(html, { url });
-    const reader = new Readability(doc.window.document);
+    const { document } = parseHTML(html);
+    const reader = new Readability(document);
     const article = reader.parse();
 
     if (!article || !article.textContent) {
