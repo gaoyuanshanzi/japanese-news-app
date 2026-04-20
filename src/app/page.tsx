@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Play, RefreshCw, ChevronRight, Lock } from "lucide-react";
+import Kuroshiro from "kuroshiro";
+import KuromojiAnalyzer from "kuroshiro-analyzer-kuromoji";
 import styles from "./page.module.css";
 
 type NewsItem = {
@@ -67,6 +69,16 @@ export default function Home() {
     }
   };
 
+  const kuroshiroRef = useRef<any>(null);
+
+  const initKuroshiro = async () => {
+    if (kuroshiroRef.current) return kuroshiroRef.current;
+    const kuroshiro = new Kuroshiro();
+    await kuroshiro.init(new KuromojiAnalyzer({ dictPath: "/dict" }));
+    kuroshiroRef.current = kuroshiro;
+    return kuroshiro;
+  };
+
   const loadArticle = async (news: NewsItem) => {
     setSelectedNews(news);
     setArticle(null);
@@ -77,11 +89,25 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: news.link })
       });
-      const data = await res.json();
+      const textData = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+      } catch (parseError) {
+        throw new Error(`Server Error (${res.status}): ${textData.substring(0, 150)}...`);
+      }
+      
       if (!res.ok) throw new Error(data.error || "Failed to process article");
       
+      // Initialize Kuroshiro locally to save server memory/timeouts
+      const kuroshiro = await initKuroshiro();
+      const furiganaHtml = await kuroshiro.convert(data.rawText, {
+        to: 'hiragana',
+        mode: 'furigana',
+      });
+
       setArticle({
-        furiganaHtml: data.furiganaHtml,
+        furiganaHtml: furiganaHtml,
         translation: data.translation
       });
     } catch (err: any) {

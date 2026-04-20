@@ -1,27 +1,7 @@
 import { NextResponse } from 'next/server';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
-import Kuroshiro from 'kuroshiro';
-import KuromojiAnalyzer from 'kuroshiro-analyzer-kuromoji';
 import { translate } from '@vitalets/google-translate-api';
-import path from 'path';
-
-// Note: Kuroshiro initialization can be slow, so we cache it globally in development
-let kuroshiroInstance: Kuroshiro | null = null;
-
-async function getKuroshiro() {
-  if (kuroshiroInstance) return kuroshiroInstance;
-  
-  const kuroshiro = new Kuroshiro();
-  
-  // Need to provide the dictionary path for Kuromoji.
-  // We use the public/dict folder so Vercel can trace it correctly.
-  const dictPath = path.join(process.cwd(), 'public', 'dict');
-  
-  await kuroshiro.init(new KuromojiAnalyzer({ dictPath }));
-  kuroshiroInstance = kuroshiro;
-  return kuroshiro;
-}
 
 export async function POST(req: Request) {
   try {
@@ -50,29 +30,21 @@ export async function POST(req: Request) {
       .filter((line: string) => line.length > 0)
       .join('\n\n');
 
-    // 3. Add Furigana using Kuroshiro
-    const kuroshiro = await getKuroshiro();
-    // Use 'ruby' mode for HTML generation, romanji/hiragana/katakana depends on to parameter
-    const furiganaHtml = await kuroshiro.convert(cleanText, {
-      to: 'hiragana',
-      mode: 'furigana',
-    });
-
-    // 4. Translate to Korean
-    // We split into chunks if needed, but google-translate-api usually handles reasonably sized texts.
-    // For large articles, might need to chunk, but Yahoo news is usually short.
+    // We now do Furigana on the client side to avoid Vercel timeouts and dictionary path issues.
+    
+    // 3. Translate to Korean
     let translation = "";
     try {
       const res = await translate(cleanText, { to: 'ko' });
       translation = res.text;
-    } catch (translateError) {
+    } catch (translateError: any) {
       console.error("Translation error:", translateError);
-      translation = "Translation failed or rate limited.";
+      translation = "Translation failed: " + translateError.message;
     }
 
     return NextResponse.json({
       title: article.title,
-      furiganaHtml: furiganaHtml,
+      rawText: cleanText,
       translation: translation
     });
   } catch (error: any) {
