@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["kuroshiro", "kuroshiro-analyzer-kuromoji", "kuromoji"],
+  outputFileTracingIncludes: {
+    "/api/process-news": ["public/dict/**/*"],
+  },
 };
 
 export default nextConfig;
