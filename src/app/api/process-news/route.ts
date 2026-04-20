@@ -75,8 +75,8 @@ export async function POST(req: Request) {
       furiganaHtml: furiganaHtml,
       translation: translation
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing news:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error', stack: error.stack }, { status: 500 });
   }
 }

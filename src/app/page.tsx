@@ -77,15 +77,16 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: news.link })
       });
-      if (!res.ok) throw new Error("Failed to process article");
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to process article");
+      
       setArticle({
         furiganaHtml: data.furiganaHtml,
         translation: data.translation
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error processing the article. It might not be accessible.");
+      alert("Error: " + err.message);
     } finally {
       setIsLoadingArticle(false);
     }
